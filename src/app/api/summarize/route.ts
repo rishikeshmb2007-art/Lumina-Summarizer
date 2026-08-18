@@ -1,18 +1,21 @@
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
+  let inputText = "";
+
   try {
     const { text, useMock } = await req.json();
+    inputText = text || "";
 
-    if (!text || text.trim().length === 0) {
+    if (!inputText || inputText.trim().length === 0) {
       return NextResponse.json({ success: false, error: "Please enter text to summarize." }, { status: 400 });
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // Fallback parser in case API key is missing or quota/demand limits trigger
-    const runFallback = () => {
-      const sentences = text
+    // Fallback parser function
+    const runFallback = (rawInput: string) => {
+      const sentences = rawInput
         .split(/[.!?]+/)
         .map((s: string) => s.trim())
         .filter((s: string) => s.length > 8);
@@ -27,7 +30,7 @@ export async function POST(req: Request) {
         flashcards: [
           {
             question: "What is the primary topic of this document?",
-            answer: sentences[0] || text.slice(0, 100) + "..."
+            answer: sentences[0] || rawInput.slice(0, 100) + "..."
           },
           {
             question: "What key process or definition is highlighted?",
@@ -39,7 +42,7 @@ export async function POST(req: Request) {
 
     if (useMock || !apiKey) {
       await new Promise((res) => setTimeout(res, 500));
-      return NextResponse.json({ success: true, data: runFallback() });
+      return NextResponse.json({ success: true, data: runFallback(inputText) });
     }
 
     const prompt = `Analyze this educational text and return ONLY a valid JSON object with NO markdown, NO triple backticks:
@@ -58,9 +61,9 @@ export async function POST(req: Request) {
 }
 
 Input Text:
-${text}`;
+${inputText}`;
 
-    // Attempt 1: Call gemini-3.6-flash (The working model)
+    // Attempt 1: Call gemini-3.6-flash
     let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -69,7 +72,7 @@ ${text}`;
       })
     });
 
-    // Attempt 2: If gemini-3.6-flash hits demand spikes or quota errors, fallback to default alias 'gemini-flash'
+    // Attempt 2: Fallback to default alias 'gemini-flash'
     if (!response.ok) {
       console.warn("Attempting fallback to default 'gemini-flash' model...");
       response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash:generateContent?key=${apiKey}`, {
@@ -83,15 +86,12 @@ ${text}`;
 
     const rawData = await response.json();
 
-    // Catch High-Demand / Quota limit errors gracefully so the app stays functional
     if (!response.ok || rawData?.error) {
-      console.warn("API limit hit or model busy. Serving instant extracted fallback data.", rawData);
-      return NextResponse.json({ success: true, data: runFallback() });
+      console.warn("API limit hit or model busy. Serving fallback data.", rawData);
+      return NextResponse.json({ success: true, data: runFallback(inputText) });
     }
 
     const responseText = rawData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    
-    // Clean markdown formatting tags from JSON response
     const cleanJson = responseText.replace(/```json|```/g, "").trim();
     const parsedData = JSON.parse(cleanJson);
 
@@ -99,11 +99,11 @@ ${text}`;
 
   } catch (error: any) {
     console.error("Server Route Error:", error);
-    // Absolute fail-safe: Returns processed structured text so the presentation never halts
-    const sentences = text
-      ?.split(/[.!?]+/)
-      ?.map((s: string) => s.trim())
-      ?.filter((s: string) => s.length > 5) || [];
+    
+    const sentences = inputText
+      .split(/[.!?]+/)
+      .map((s: string) => s.trim())
+      .filter((s: string) => s.length > 5);
 
     return NextResponse.json({ 
       success: true, 
