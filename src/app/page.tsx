@@ -1,9 +1,10 @@
 "use client";
 
+import FileUpload from "@/components/FileUpload";
 import React, { useState } from "react";
-import { 
-  Sparkles, BookOpen, Layers, MessageSquare, Zap, CheckCircle2, 
-  RefreshCw, Network, BrainCircuit, Copy, Check, FileDown, 
+import {
+  Sparkles, BookOpen, Layers, MessageSquare, Zap, CheckCircle2,
+  RefreshCw, Network, BrainCircuit, Copy, Check, FileDown,
   RotateCw, Clock, BarChart2, ShieldCheck, Flame, ArrowRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -96,11 +97,10 @@ export default function Home() {
           </div>
           <button
             onClick={() => setIsMock(!isMock)}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold tracking-wide transition-all flex items-center space-x-2 ${
-              isMock
-                ? "bg-amber-500/10 text-amber-400 border border-amber-500/30 shadow-lg shadow-amber-500/10"
-                : "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shadow-lg shadow-cyan-500/10"
-            }`}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold tracking-wide transition-all flex items-center space-x-2 ${isMock
+              ? "bg-amber-500/10 text-amber-400 border border-amber-500/30 shadow-lg shadow-amber-500/10"
+              : "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shadow-lg shadow-cyan-500/10"
+              }`}
           >
             <Flame className="w-3.5 h-3.5" />
             <span>{isMock ? "Demo Fallback Mode" : "Live Gemini AI"}</span>
@@ -110,7 +110,7 @@ export default function Home() {
 
       {/* Main Workspace */}
       <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 p-6 lg:p-10 max-w-7xl mx-auto w-full">
-        
+
         {/* Left Column: Source Input */}
         <div className="lg:col-span-5 flex flex-col space-y-4">
           <div className="glass-panel p-6 rounded-3xl border border-slate-800 flex-1 flex flex-col neon-glow relative overflow-hidden">
@@ -125,6 +125,8 @@ export default function Home() {
                 </div>
               )}
             </div>
+
+            <FileUpload onTextExtracted={(text) => setInputNote(text)} />
 
             <textarea
               value={inputNote}
@@ -173,7 +175,7 @@ export default function Home() {
         {/* Right Column: Interactive Study Kit */}
         <div className="lg:col-span-7 flex flex-col space-y-4">
           <div className="glass-panel p-6 rounded-3xl border border-slate-800 flex-1 flex flex-col min-h-[500px] relative">
-            
+
             {/* Header & Tabs */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800/80 pb-4 mb-6 gap-4">
               <div className="flex space-x-6">
@@ -187,11 +189,10 @@ export default function Home() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id as any)}
-                      className={`flex items-center space-x-2 text-sm font-bold pb-1 border-b-2 transition-all ${
-                        activeTab === tab.id
-                          ? "border-cyan-400 text-cyan-400"
-                          : "border-transparent text-slate-500 hover:text-slate-300"
-                      }`}
+                      className={`flex items-center space-x-2 text-sm font-bold pb-1 border-b-2 transition-all ${activeTab === tab.id
+                        ? "border-cyan-400 text-cyan-400"
+                        : "border-transparent text-slate-500 hover:text-slate-300"
+                        }`}
                     >
                       <Icon className="w-4 h-4" />
                       <span>{tab.label}</span>
@@ -275,14 +276,14 @@ export default function Home() {
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col items-center justify-center py-4">
                 {summaryData.flashcards && summaryData.flashcards.length > 0 ? (
                   <div className="w-full max-w-md flex flex-col items-center">
-                    
+
                     {/* 3D Flippable Card Container */}
-                    <div 
+                    <div
                       className="w-full h-64 perspective-1000 cursor-pointer"
                       onClick={() => setIsFlipped(!isFlipped)}
                     >
                       <div className={`relative w-full h-full duration-500 transform-style-3d transition-transform ${isFlipped ? "rotate-y-180" : ""}`}>
-                        
+
                         {/* FRONT OF CARD */}
                         <div className="absolute inset-0 w-full h-full backface-hidden bg-slate-900/90 border-2 border-cyan-500/40 rounded-3xl p-8 flex flex-col justify-between shadow-2xl hover:border-cyan-400 transition-all">
                           <div className="flex justify-between items-center">
@@ -364,7 +365,7 @@ export default function Home() {
             {summaryData && activeTab === "mindmap" && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col items-center justify-center p-4">
                 <div className="w-full max-w-lg bg-slate-950/90 border border-slate-800 rounded-3xl p-6 relative flex flex-col items-center shadow-2xl">
-                  
+
                   {/* Central Node */}
                   <div className="px-6 py-3 bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-pink-500 text-slate-950 font-black rounded-2xl text-center shadow-lg shadow-cyan-500/20 text-xs tracking-wide">
                     {summaryData.title || "Core Subject"}
