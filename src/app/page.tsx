@@ -1,11 +1,11 @@
 "use client";
 import FileUpload from "@/components/FileUpload";
-import CheatsheetModal from "@/components/CheatsheetModel";
+import CheatsheetModal from "@/components/CheatsheetModal";
 import React, { useState } from "react";
 import {
   Sparkles, BookOpen, Layers, MessageSquare, Zap, CheckCircle2,
   RefreshCw, Network, BrainCircuit, Copy, Check, FileDown,
-  RotateCw, Clock, BarChart2, ShieldCheck, Flame, ArrowRight, FileText
+  RotateCw, Clock, BarChart2, ShieldCheck, Flame, ArrowRight, FileText, Video
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -30,9 +30,46 @@ export default function Home() {
     { label: "OS Page Replacement", text: "Page replacement algorithms like LRU (Least Recently Used) and FIFO decide which memory page to page out when a new page needs to be allocated in an operating system." }
   ];
 
+  // Helper to detect if input string is a valid YouTube URL
+  const isYouTubeUrl = (url: string) => {
+    const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    return ytRegex.test(url.trim());
+  };
+
+  // Helper to resolve YouTube transcript automatically
+  const resolveInputText = async (input: string): Promise<string | null> => {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+
+    if (isYouTubeUrl(trimmed)) {
+      try {
+        const ytRes = await fetch("/api/youtube", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: trimmed }),
+        });
+
+        const ytData = await ytRes.json();
+
+        if (!ytRes.ok || !ytData.success) {
+          alert(ytData.error || "Failed to extract YouTube transcript.");
+          return null;
+        }
+
+        return ytData.text;
+      } catch (err) {
+        console.error("YouTube Fetch Error:", err);
+        alert("Could not connect to YouTube transcript service.");
+        return null;
+      }
+    }
+
+    return trimmed;
+  };
+
   const handleGenerate = async (overrideText?: string) => {
-    const textToProcess = overrideText || inputNote;
-    if (!textToProcess.trim()) return;
+    const rawInput = overrideText || inputNote;
+    if (!rawInput.trim()) return;
 
     if (overrideText) setInputNote(overrideText);
     setLoading(true);
@@ -41,6 +78,12 @@ export default function Home() {
     setIsFlipped(false);
 
     try {
+      const textToProcess = await resolveInputText(rawInput);
+      if (!textToProcess) {
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch("/api/summarize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -67,12 +110,18 @@ export default function Home() {
     setLoadingCheatsheet(true);
 
     try {
+      const textToProcess = await resolveInputText(inputNote);
+      if (!textToProcess) {
+        setLoadingCheatsheet(false);
+        return;
+      }
+
       const res = await fetch("/api/cheatsheet", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text: inputNote }),
+        body: JSON.stringify({ text: textToProcess }),
       });
 
       const result = await res.json();
@@ -157,7 +206,12 @@ export default function Home() {
               <h2 className="text-sm font-bold text-slate-200 flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-cyan-400" /> Study Material Input
               </h2>
-              {wordCount > 0 && (
+              {isYouTubeUrl(inputNote) ? (
+                <div className="flex items-center space-x-1 text-[11px] font-mono text-red-400 bg-red-950/60 border border-red-800/80 px-2 py-0.5 rounded-full">
+                  <Video className="w-3 h-3 text-red-400" />
+                  <span>YouTube URL Detected</span>
+                </div>
+              ) : wordCount > 0 && (
                 <div className="flex items-center space-x-3 text-[11px] font-mono text-slate-400">
                   <span className="flex items-center gap-1"><BarChart2 className="w-3 h-3 text-cyan-400" /> {wordCount} words</span>
                   <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-fuchsia-400" /> ~{readTime}m read</span>
@@ -170,7 +224,7 @@ export default function Home() {
             <textarea
               value={inputNote}
               onChange={(e) => setInputNote(e.target.value)}
-              placeholder="Paste raw lecture notes, syllabus modules, or exam questions here..."
+              placeholder="Paste raw lecture notes, syllabus modules, or a YouTube video link here..."
               className="w-full flex-1 bg-slate-950/90 border border-slate-800/80 rounded-2xl p-4 text-sm focus:outline-none focus:border-cyan-400/80 transition-all resize-none text-slate-200 placeholder-slate-600 min-h-[260px] leading-relaxed"
             />
 
