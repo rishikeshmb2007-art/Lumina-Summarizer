@@ -1,11 +1,11 @@
 "use client";
-
 import FileUpload from "@/components/FileUpload";
+import CheatsheetModal from "@/components/CheatsheetModel";
 import React, { useState } from "react";
 import {
   Sparkles, BookOpen, Layers, MessageSquare, Zap, CheckCircle2,
   RefreshCw, Network, BrainCircuit, Copy, Check, FileDown,
-  RotateCw, Clock, BarChart2, ShieldCheck, Flame, ArrowRight
+  RotateCw, Clock, BarChart2, ShieldCheck, Flame, ArrowRight, FileText
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -18,6 +18,11 @@ export default function Home() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isMock, setIsMock] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Cheatsheet States
+  const [isCheatsheetOpen, setIsCheatsheetOpen] = useState(false);
+  const [cheatsheetData, setCheatsheetData] = useState<any>(null);
+  const [loadingCheatsheet, setLoadingCheatsheet] = useState(false);
 
   const samplePrompts = [
     { label: "Banker's Algorithm", text: "The Banker's Algorithm is a resource allocation and deadlock avoidance algorithm that tests for safety by simulating the allocation of predetermined maximum possible amounts of all resources." },
@@ -50,6 +55,40 @@ export default function Home() {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGenerateCheatsheet = async () => {
+    if (!inputNote || inputNote.trim().length === 0) {
+      alert("Please enter or upload some content first!");
+      return;
+    }
+
+    setLoadingCheatsheet(true);
+
+    try {
+      const res = await fetch("/api/cheatsheet", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: inputNote }),
+      });
+
+      const result = await res.json();
+
+      if (res.ok && result.success && result.data) {
+        setCheatsheetData(result.data);
+        setIsCheatsheetOpen(true);
+      } else {
+        console.error("Cheatsheet API Error:", result.error);
+        alert(result.error || "Failed to generate cheatsheet");
+      }
+    } catch (err) {
+      console.error("Fetch Error:", err);
+      alert("Something went wrong while connecting to the server.");
+    } finally {
+      setLoadingCheatsheet(false);
     }
   };
 
@@ -152,23 +191,40 @@ export default function Home() {
               </div>
             </div>
 
-            <button
-              onClick={() => handleGenerate()}
-              disabled={loading || !inputNote.trim()}
-              className="mt-4 w-full py-4 px-6 bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-pink-500 hover:opacity-95 text-slate-950 font-black text-sm tracking-wider uppercase rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-cyan-500/20 disabled:opacity-40 cursor-pointer"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  <span>Synthesizing Study Kit...</span>
-                </>
-              ) : (
-                <>
-                  <Zap className="w-5 h-5 fill-slate-950" />
-                  <span>Generate AI Study Kit</span>
-                </>
-              )}
-            </button>
+            {/* Action Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
+              <button
+                onClick={() => handleGenerate()}
+                disabled={loading || !inputNote.trim()}
+                className="sm:col-span-2 py-3.5 px-4 bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-pink-500 hover:opacity-95 text-slate-950 font-black text-xs tracking-wider uppercase rounded-2xl flex items-center justify-center space-x-2 transition-all shadow-xl shadow-cyan-500/20 disabled:opacity-40 cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Synthesizing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 fill-slate-950" />
+                    <span>Generate Kit</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={handleGenerateCheatsheet}
+                disabled={loadingCheatsheet || !inputNote.trim()}
+                className="py-3.5 px-3 bg-gradient-to-r from-pink-500/20 to-purple-500/20 hover:from-pink-500/30 hover:to-purple-500/30 text-pink-300 border border-pink-500/30 rounded-2xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 disabled:opacity-40 cursor-pointer"
+              >
+                {loadingCheatsheet ? (
+                  <RefreshCw className="w-4 h-4 animate-spin text-pink-400" />
+                ) : (
+                  <FileText className="w-4 h-4 text-pink-400" />
+                )}
+                <span>Cheatsheet</span>
+              </button>
+            </div>
+
           </div>
         </div>
 
@@ -390,6 +446,13 @@ export default function Home() {
         </div>
 
       </main>
+
+      {/* Printable Cheatsheet Modal */}
+      <CheatsheetModal
+        isOpen={isCheatsheetOpen}
+        onClose={() => setIsCheatsheetOpen(false)}
+        data={cheatsheetData}
+      />
     </div>
   );
 }
